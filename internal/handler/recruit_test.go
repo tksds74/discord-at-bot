@@ -21,7 +21,7 @@ func TestEncodeCustomID(t *testing.T) {
 				"te:st":    "test23Value1",
 				"customID": "recruit/fake",
 			},
-			want:    "4:key16:val:ue5:te:st12:test23Value18:customID12:recruit/fake",
+			want:    "8:customID12:recruit/fake4:key16:val:ue5:te:st12:test23Value1",
 			wantErr: false,
 		},
 		{
@@ -73,7 +73,7 @@ func TestDecodeCustomID(t *testing.T) {
 	}{
 		{
 			name:       "複数のキーバリューを正しくデコード",
-			encodedStr: "4:key16:val:ue5:te:st12:test23Value18:customID12:recruit/fake",
+			encodedStr: "8:customID12:recruit/fake4:key16:val:ue5:te:st12:test23Value1",
 			want: map[string]string{
 				"key1":     "val:ue",
 				"te:st":    "test23Value1",

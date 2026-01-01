@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -213,14 +214,18 @@ func (command *baseInteractionCommand) MatchCustomID(customID string) bool {
 }
 
 func encodeCustomID(items map[string]string) (string, error) {
-	sb := strings.Builder{}
-	for key := range items {
-		keyData := fmt.Sprintf("%v:%s", len(key), key)
-		sb.WriteString(keyData)
-		value := items[key]
-		valueData := fmt.Sprintf("%v:%s", len(value), value)
-		sb.WriteString(valueData)
+	keys := make([]string, 0, len(items))
+	for k := range items {
+		keys = append(keys, k)
 	}
+	sort.Strings(keys)
+
+	sb := strings.Builder{}
+	for _, key := range keys {
+		value := items[key]
+		fmt.Fprintf(&sb, "%d:%s%d:%s", len(key), key, len(value), value)
+	}
+
 	result := sb.String()
 	if len(result) > 100 {
 		return "", fmt.Errorf("custom ID is size over: %s", result)
