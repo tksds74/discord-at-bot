@@ -25,7 +25,7 @@ func NewRecruitUsecase(
 	}
 }
 
-func (uc *RecruitUsecase) Start(
+func (uc *RecruitUsecase) Open(
 	ctx context.Context,
 	guildID GuildID,
 	channelID ChannelID,
@@ -179,7 +179,7 @@ func (uc *RecruitUsecase) Cancel(
 	return uc.updateParticipantStatus(ctx, channelID, messageID, actorID, ParticipantStatusCanceled)
 }
 
-func (uc *RecruitUsecase) Delete(
+func (uc *RecruitUsecase) Close(
 	ctx context.Context,
 	channelID ChannelID,
 	messageID MessageID,

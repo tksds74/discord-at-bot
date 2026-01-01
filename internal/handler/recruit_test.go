@@ -41,12 +41,28 @@ func TestEncodeCustomID(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "100文字を超える場合はエラー",
+			name: "エンコード結果が100文字を大きく超える場合はエラー",
 			items: map[string]string{
 				"key": strings.Repeat("a", 100),
 			},
 			want:    "",
 			wantErr: true,
+		},
+		{
+			name: "エンコード結果が101文字の場合はエラー",
+			items: map[string]string{
+				"key": strings.Repeat("a", 93),
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "エンコード結果が100文字なら許可",
+			items: map[string]string{
+				"key": strings.Repeat("a", 92),
+			},
+			want:    "3:key92:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			wantErr: false,
 		},
 	}
 
@@ -145,7 +161,7 @@ func TestEncodeDecodeCustomID_RoundTrip(t *testing.T) {
 		{
 			name: "特殊文字を含むケース",
 			items: map[string]string{
-				"customID":  "recruit/delete",
+				"customID":  "recruit/close",
 				"messageID": "123456789",
 			},
 		},
@@ -311,8 +327,8 @@ func TestInitState(t *testing.T) {
 	}
 }
 
-func TestStartRecruitCommand_ExtractArgNumber(t *testing.T) {
-	cmd := &startRecruitCommand{}
+func TestOpenRecruitCommand_ExtractArgNumber(t *testing.T) {
+	cmd := &openRecruitCommand{}
 
 	tests := []struct {
 		name    string
@@ -455,7 +471,7 @@ func TestBaseInteractionCommand_MatchCustomID(t *testing.T) {
 		},
 		{
 			name:     "マッチしない場合",
-			customID: "8:customID14:recruit/delete",
+			customID: "8:customID13:recruit/close",
 			target:   "recruit/join",
 			want:     false,
 		},
