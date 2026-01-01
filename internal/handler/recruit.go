@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -20,7 +21,7 @@ type interactionCustomID string
 const (
 	interactionJoin    interactionCustomID = "recruit/join"
 	interactionDecline interactionCustomID = "recruit/decline"
-	interactionDelete  interactionCustomID = "recruit/delete"
+	interactionClose   interactionCustomID = "recruit/close"
 	interactionCancel  interactionCustomID = "recruit/cancel"
 )
 
@@ -40,21 +41,21 @@ func (id interactionCustomID) toString() string {
 	return string(id)
 }
 
-type startRecruitCommand struct {
+type openRecruitCommand struct {
 	service *recruit.RecruitUsecase
 }
 
-func NewStartRecruitCommand(service *recruit.RecruitUsecase) *startRecruitCommand {
-	return &startRecruitCommand{
+func NewOpenRecruitCommand(service *recruit.RecruitUsecase) *openRecruitCommand {
+	return &openRecruitCommand{
 		service: service,
 	}
 }
 
-func (command *startRecruitCommand) Prefix() string {
+func (command *openRecruitCommand) Prefix() string {
 	return "@"
 }
 
-func (command *startRecruitCommand) Handle(session *discordgo.Session, message *discordgo.MessageCreate) error {
+func (command *openRecruitCommand) Handle(session *discordgo.Session, message *discordgo.MessageCreate) error {
 	// 定員引数の取得
 	num, err := command.extractArgNumber(message.Content)
 	if err != nil {
@@ -69,9 +70,12 @@ func (command *startRecruitCommand) Handle(session *discordgo.Session, message *
 		return fmt.Errorf("failed to send message. channelId: %s, %w", message.ChannelID, err)
 	}
 
+	ctx, cancel := createContextWithTimeout()
+	defer cancel()
+
 	// 募集の作成
-	_, err = command.service.Start(
-		context.TODO(),
+	_, err = command.service.Open(
+		ctx,
 		recruit.GuildID(message.GuildID),
 		recruit.ChannelID(message.ChannelID),
 		recruit.MessageID(sentMessage.ID),
@@ -95,7 +99,7 @@ func (command *startRecruitCommand) Handle(session *discordgo.Session, message *
 	return nil
 }
 
-func (command *startRecruitCommand) extractArgNumber(content string) (int, error) {
+func (command *openRecruitCommand) extractArgNumber(content string) (int, error) {
 	arg := strings.TrimSpace(strings.TrimPrefix(content, command.Prefix()))
 	args := strings.Split(strings.ReplaceAll(arg, "　", " "), " ")
 	return strconv.Atoi(args[0])
@@ -201,7 +205,7 @@ type baseInteractionCommand struct {
 	customID string
 }
 
-func (command *deleteRecruitCommand) CustomID() string {
+func (command *baseInteractionCommand) CustomID() string {
 	return command.customID
 }
 
@@ -343,10 +347,6 @@ func (command *participantActionCommand) InteractionType() discordgo.Interaction
 	return discordgo.InteractionMessageComponent
 }
 
-func (command *participantActionCommand) CustomID() string {
-	return command.customID
-}
-
 func (command *participantActionCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
 	// 3秒以内に応答する必要があるのでBOT待機メッセージで返答
 	// キャンセルボタンの場合は元のエフェメラルメッセージを更新対象にする
@@ -376,8 +376,11 @@ func (command *participantActionCommand) Handle(session *discordgo.Session, inte
 		return err
 	}
 
+	ctx, cancel := createContextWithTimeout()
+	defer cancel()
+
 	// ビジネスロジック呼び出し
-	result, err := command.executeAction(context.TODO(), channelID, messageID, actorID)
+	result, err := command.executeAction(ctx, channelID, messageID, actorID)
 	if err != nil {
 		return command.handleActionError(session, interaction, err)
 	}
@@ -444,7 +447,7 @@ func (command *participantActionCommand) sendAuthorControlPanel(
 ) {
 	message := "作成者は参加/辞退できません。\n募集を削除する場合はボタンを押下してください。"
 	deleteCustomID, _ := encodeCustomID(map[string]string{
-		customIDKey:  interactionDelete.toString(),
+		customIDKey:  interactionClose.toString(),
 		messageIDKey: interaction.Message.ID,
 	})
 	button := &[]discordgo.MessageComponent{
@@ -572,25 +575,25 @@ func ptr(s string) *string {
 	return &s
 }
 
-type deleteRecruitCommand struct {
+type closeRecruitCommand struct {
 	baseInteractionCommand
 	service *recruit.RecruitUsecase
 }
 
-func NewDeleteRecruitCommand(service *recruit.RecruitUsecase) *deleteRecruitCommand {
-	return &deleteRecruitCommand{
+func NewCloseRecruitCommand(service *recruit.RecruitUsecase) *closeRecruitCommand {
+	return &closeRecruitCommand{
 		service: service,
 		baseInteractionCommand: baseInteractionCommand{
-			customID: interactionDelete.toString(),
+			customID: interactionClose.toString(),
 		},
 	}
 }
 
-func (command *deleteRecruitCommand) InteractionType() discordgo.InteractionType {
+func (command *closeRecruitCommand) InteractionType() discordgo.InteractionType {
 	return discordgo.InteractionMessageComponent
 }
 
-func (command *deleteRecruitCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
+func (command *closeRecruitCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
 	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})
@@ -611,8 +614,11 @@ func (command *deleteRecruitCommand) Handle(session *discordgo.Session, interact
 	recruitMessageIDStr := items[messageIDKey]
 	recruitMessageID := recruit.MessageID(recruitMessageIDStr)
 
+	ctx, cancel := createContextWithTimeout()
+	defer cancel()
+
 	// 削除ロジック実行
-	err = command.service.Delete(context.TODO(), channelID, recruitMessageID, actorID)
+	err = command.service.Close(ctx, channelID, recruitMessageID, actorID)
 	if err != nil {
 		return err
 	}
@@ -629,4 +635,8 @@ func (command *deleteRecruitCommand) Handle(session *discordgo.Session, interact
 	_ = session.InteractionResponseDelete(interaction)
 
 	return err
+}
+
+func createContextWithTimeout() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 5*time.Second)
 }

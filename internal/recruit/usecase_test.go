@@ -86,7 +86,7 @@ func (m *mockUnitOfWork) Do(ctx context.Context, fn func(ctx context.Context) er
 	return fn(ctx)
 }
 
-func TestRecruitUsecase_Start(t *testing.T) {
+func TestRecruitUsecase_Open(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("募集開始が正常に作成される", func(t *testing.T) {
@@ -137,9 +137,9 @@ func TestRecruitUsecase_Start(t *testing.T) {
 		uow := &mockUnitOfWork{}
 		uc := NewRecruitUsecase(recruitRepo, participantRepo, uow)
 
-		view, err := uc.Start(ctx, "guild-1", "channel-1", "message-1", 5, "author-1")
+		view, err := uc.Open(ctx, "guild-1", "channel-1", "message-1", 5, "author-1")
 		if err != nil {
-			t.Fatalf("Start() error = %v", err)
+			t.Fatalf("Open() error = %v", err)
 		}
 
 		if view == nil {
@@ -163,9 +163,9 @@ func TestRecruitUsecase_Start(t *testing.T) {
 		uow := &mockUnitOfWork{}
 		uc := NewRecruitUsecase(recruitRepo, participantRepo, uow)
 
-		_, err := uc.Start(ctx, "guild-1", "channel-1", "message-1", 5, "author-1")
+		_, err := uc.Open(ctx, "guild-1", "channel-1", "message-1", 5, "author-1")
 		if err == nil {
-			t.Error("Start() error = nil, want error")
+			t.Error("Open() error = nil, want error")
 		}
 	})
 }
@@ -435,7 +435,7 @@ func TestRecruitUsecase_Cancel(t *testing.T) {
 	})
 }
 
-func TestRecruitUsecase_Delete(t *testing.T) {
+func TestRecruitUsecase_Close(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("作成者は募集を削除できる", func(t *testing.T) {
@@ -464,9 +464,9 @@ func TestRecruitUsecase_Delete(t *testing.T) {
 		uow := &mockUnitOfWork{}
 		uc := NewRecruitUsecase(recruitRepo, participantRepo, uow)
 
-		err := uc.Delete(ctx, "channel-1", "message-1", "author-1")
+		err := uc.Close(ctx, "channel-1", "message-1", "author-1")
 		if err != nil {
-			t.Errorf("Delete() error = %v", err)
+			t.Errorf("Close() error = %v", err)
 		}
 	})
 
@@ -490,9 +490,9 @@ func TestRecruitUsecase_Delete(t *testing.T) {
 		uow := &mockUnitOfWork{}
 		uc := NewRecruitUsecase(recruitRepo, participantRepo, uow)
 
-		err := uc.Delete(ctx, "channel-1", "message-1", "user-1")
+		err := uc.Close(ctx, "channel-1", "message-1", "user-1")
 		if err == nil {
-			t.Error("Delete() error = nil, want error")
+			t.Error("Close() error = nil, want error")
 		}
 	})
 }

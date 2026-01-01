@@ -32,16 +32,16 @@ func main() {
 	txManager := sqlite.NewTxManager(db)
 	// usecase
 	recruitUsecase := recruit.NewRecruitUsecase(recruitRepo, participantRepos, txManager)
-	// hadler
-	startCmd := handler.NewStartRecruitCommand(recruitUsecase)
+	// handler
+	openCmd := handler.NewOpenRecruitCommand(recruitUsecase)
 	joinCmd := handler.NewJoinRecruitCommand(recruitUsecase)
 	declineCmd := handler.NewDeclineRecruitCommand(recruitUsecase)
 	cancelCmd := handler.NewCancelRecruitCommand(recruitUsecase)
-	deleteCmd := handler.NewDeleteRecruitCommand(recruitUsecase)
+	closeCmd := handler.NewCloseRecruitCommand(recruitUsecase)
 
 	prefixCommandDispatcher := &discord.PrefixCommandDispatcher{
 		Listeners: []discord.PrefixCommandListener{
-			startCmd,
+			openCmd,
 		},
 	}
 
@@ -50,7 +50,7 @@ func main() {
 			joinCmd,
 			declineCmd,
 			cancelCmd,
-			deleteCmd,
+			closeCmd,
 		},
 	}
 
