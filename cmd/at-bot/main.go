@@ -16,10 +16,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatalf("環境変数の読み込みに失敗しました。: %v", err)
-	}
+	_ = godotenv.Load(".env")
 
 	db, err := sqlite.InitDB("./data/bot.db")
 	if err != nil {
