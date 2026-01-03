@@ -11,12 +11,14 @@ type SessionConfig interface {
 	Token() string
 	Intent() discordgo.Intent
 	Handlers() []any
+	Slashes() []*discordgo.ApplicationCommand
 }
 
 type sessionConfig struct {
 	token    string
 	intent   discordgo.Intent
 	handlers []any
+	slashes  []*discordgo.ApplicationCommand
 }
 
 func (config *sessionConfig) Token() string {
@@ -29,6 +31,10 @@ func (config *sessionConfig) Intent() discordgo.Intent {
 
 func (config *sessionConfig) Handlers() []any {
 	return append([]any(nil), config.handlers...)
+}
+
+func (config *sessionConfig) Slashes() []*discordgo.ApplicationCommand {
+	return append(make([]*discordgo.ApplicationCommand, 0), config.slashes...)
 }
 
 func (config *sessionConfig) validate() error {
@@ -98,6 +104,15 @@ func WithInteractionCreateHandler(
 	return withHandler(handler)
 }
 
+func WithSlashCommand(
+	command SlashCommand,
+) sessionConfigOption {
+	return func(config *sessionConfig) error {
+		config.slashes = append(config.slashes, command.CreateCommand())
+		return nil
+	}
+}
+
 func withHandler(handler any) sessionConfigOption {
 	return func(config *sessionConfig) error {
 		config.handlers = append(config.handlers, handler)
@@ -129,6 +144,11 @@ func (manager *SessionManager) Open(config SessionConfig) error {
 	}
 
 	if err := session.Open(); err != nil {
+		return err
+	}
+
+	_, err = session.ApplicationCommandBulkOverwrite(session.State.User.ID, "", config.Slashes())
+	if err != nil {
 		return err
 	}
 
