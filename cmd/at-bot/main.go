@@ -2,6 +2,7 @@ package main
 
 import (
 	"at-bot/internal/db/sqlite"
+	"at-bot/internal/dice"
 	"at-bot/internal/discord"
 	"at-bot/internal/handler"
 	"at-bot/internal/recruit"
@@ -32,6 +33,7 @@ func main() {
 	txManager := sqlite.NewTxManager(db)
 	// usecase
 	recruitUsecase := recruit.NewRecruitUsecase(recruitRepo, participantRepos, txManager)
+	diceUsecase := dice.NewRecruitUsecase()
 	// handler
 	openCmd := handler.NewOpenRecruitCommand(recruitUsecase)
 	openSlashCmd := handler.NewOpenRecruitSlashCommand(recruitUsecase)
@@ -39,6 +41,7 @@ func main() {
 	declineCmd := handler.NewDeclineRecruitCommand(recruitUsecase)
 	cancelCmd := handler.NewCancelRecruitCommand(recruitUsecase)
 	closeCmd := handler.NewCloseRecruitCommand(recruitUsecase)
+	diceCmd := handler.NewDiceSlashCommand(diceUsecase)
 
 	prefixCommandDispatcher := &discord.PrefixCommandDispatcher{
 		Listeners: []discord.PrefixCommandListener{
@@ -53,6 +56,7 @@ func main() {
 			cancelCmd,
 			closeCmd,
 			openSlashCmd,
+			diceCmd,
 		},
 	}
 
@@ -64,6 +68,7 @@ func main() {
 			discord.WithMessageCreateHandler(prefixCommandDispatcher.OnMessageCreate),
 			discord.WithInteractionCreateHandler(interactionDispatcher.OnInteractionCreate),
 			discord.WithSlashCommand(openSlashCmd),
+			discord.WithSlashCommand(diceCmd),
 		)
 
 	if err != nil {
