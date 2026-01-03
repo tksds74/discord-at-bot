@@ -37,10 +37,10 @@ const (
 	customIDKey  = "customID"
 )
 
-// 開始コマンド用の固定値
+// 募集開始コマンド用の固定値
 const (
-	openCommandName = "at"
-	recruitArgName  = "人数"
+	recruitOpenCommandName = "at"
+	recruitArgName         = "人数"
 )
 
 func (id interactionCustomID) toString() string {
@@ -48,6 +48,7 @@ func (id interactionCustomID) toString() string {
 }
 
 type openRecruitSlashCommand struct {
+	baseSlashCommand
 	service *recruit.RecruitUsecase
 }
 
@@ -60,7 +61,7 @@ func NewOpenRecruitSlashCommand(service *recruit.RecruitUsecase) *openRecruitSla
 func (command *openRecruitSlashCommand) CreateCommand() *discordgo.ApplicationCommand {
 	minValue := 1.0
 	return &discordgo.ApplicationCommand{
-		Name:        openCommandName,
+		Name:        recruitOpenCommandName,
 		Description: "募集を作成します。",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
@@ -79,7 +80,7 @@ func (command *openRecruitSlashCommand) InteractionType() discordgo.InteractionT
 }
 
 func (command *openRecruitSlashCommand) InteractionID() string {
-	return openCommandName
+	return recruitOpenCommandName
 }
 
 func (command *openRecruitSlashCommand) MatchInteractionID(interactionID string) bool {
@@ -99,8 +100,8 @@ func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, inter
 		return err
 	}
 
-	// 定員引数の取得
-	optionMap := getOptionMap(interaction)
+	// 募集人数引数の取得
+	optionMap := command.getOptionMap(interaction)
 	opt, ok := optionMap[recruitArgName]
 	if !ok || opt == nil {
 		return fmt.Errorf("required option %q not found", recruitArgName)
@@ -119,15 +120,6 @@ func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, inter
 	// インタラクション反応待ちメッセージを削除
 	_ = session.InteractionResponseDelete(interaction)
 	return nil
-}
-
-func getOptionMap(interaction *discordgo.Interaction) map[string]*discordgo.ApplicationCommandInteractionDataOption {
-	options := interaction.ApplicationCommandData().Options
-	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options))
-	for _, opt := range options {
-		optionMap[opt.Name] = opt
-	}
-	return optionMap
 }
 
 type openRecruitCommand struct {

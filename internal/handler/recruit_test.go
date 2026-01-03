@@ -329,79 +329,38 @@ func TestInitState(t *testing.T) {
 	}
 }
 
-func TestGetOptionMap(t *testing.T) {
-	tests := []struct {
-		name    string
-		options []*discordgo.ApplicationCommandInteractionDataOption
-		want    map[string]*discordgo.ApplicationCommandInteractionDataOption
-	}{
-		{
-			name: "複数のオプションを正しくマップ化",
-			options: []*discordgo.ApplicationCommandInteractionDataOption{
-				{Name: "option1", Type: discordgo.ApplicationCommandOptionString, Value: "value1"},
-				{Name: "option2", Type: discordgo.ApplicationCommandOptionInteger, Value: int64(42)},
-				{Name: "option3", Type: discordgo.ApplicationCommandOptionBoolean, Value: true},
-			},
-			want: map[string]*discordgo.ApplicationCommandInteractionDataOption{
-				"option1": {Name: "option1", Type: discordgo.ApplicationCommandOptionString, Value: "value1"},
-				"option2": {Name: "option2", Type: discordgo.ApplicationCommandOptionInteger, Value: int64(42)},
-				"option3": {Name: "option3", Type: discordgo.ApplicationCommandOptionBoolean, Value: true},
-			},
-		},
-		{
-			name: "単一のオプション",
-			options: []*discordgo.ApplicationCommandInteractionDataOption{
-				{Name: recruitArgName, Type: discordgo.ApplicationCommandOptionInteger, Value: int64(5)},
-			},
-			want: map[string]*discordgo.ApplicationCommandInteractionDataOption{
-				recruitArgName: {Name: recruitArgName, Type: discordgo.ApplicationCommandOptionInteger, Value: int64(5)},
-			},
-		},
-		{
-			name:    "オプションが空",
-			options: []*discordgo.ApplicationCommandInteractionDataOption{},
-			want:    map[string]*discordgo.ApplicationCommandInteractionDataOption{},
-		},
-		{
-			name:    "オプションがnil",
-			options: nil,
-			want:    map[string]*discordgo.ApplicationCommandInteractionDataOption{},
-		},
+func TestOpenRecruitSlashCommand_CreateCommand(t *testing.T) {
+	cmd := NewOpenRecruitSlashCommand(nil)
+	command := cmd.CreateCommand()
+
+	if command.Name != recruitOpenCommandName {
+		t.Errorf("CreateCommand().Name = %v, want %v", command.Name, recruitOpenCommandName)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			interaction := &discordgo.Interaction{
-				Type: discordgo.InteractionApplicationCommand,
-				Data: discordgo.ApplicationCommandInteractionData{
-					Options: tt.options,
-				},
-			}
+	if command.Description == "" {
+		t.Errorf("CreateCommand().Description is empty")
+	}
 
-			got := getOptionMap(interaction)
+	if len(command.Options) != 1 {
+		t.Errorf("CreateCommand().Options length = %v, want 1", len(command.Options))
+		return
+	}
 
-			if len(got) != len(tt.want) {
-				t.Errorf("getOptionMap() length = %v, want %v", len(got), len(tt.want))
-				return
-			}
+	opt := command.Options[0]
+	if opt.Name != recruitArgName {
+		t.Errorf("CreateCommand().Options[0].Name = %v, want %v", opt.Name, recruitArgName)
+	}
 
-			for key, wantOpt := range tt.want {
-				gotOpt, ok := got[key]
-				if !ok {
-					t.Errorf("getOptionMap() missing key %v", key)
-					continue
-				}
-				if gotOpt.Name != wantOpt.Name {
-					t.Errorf("getOptionMap()[%v].Name = %v, want %v", key, gotOpt.Name, wantOpt.Name)
-				}
-				if gotOpt.Type != wantOpt.Type {
-					t.Errorf("getOptionMap()[%v].Type = %v, want %v", key, gotOpt.Type, wantOpt.Type)
-				}
-				if gotOpt.Value != wantOpt.Value {
-					t.Errorf("getOptionMap()[%v].Value = %v, want %v", key, gotOpt.Value, wantOpt.Value)
-				}
-			}
-		})
+	if opt.Type != discordgo.ApplicationCommandOptionInteger {
+		t.Errorf("CreateCommand().Options[0].Type = %v, want ApplicationCommandOptionInteger", opt.Type)
+	}
+
+	if !opt.Required {
+		t.Errorf("CreateCommand().Options[0].Required = false, want true")
+	}
+
+	if opt.MinValue == nil || *opt.MinValue != 1.0 {
+		t.Errorf("CreateCommand().Options[0].MinValue = %v, want 1.0", opt.MinValue)
 	}
 }
 
