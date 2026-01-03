@@ -58,10 +58,19 @@ func (dispatcher *ReactionDispatcher) OnReactionRemove(session *discordgo.Sessio
 	dispatchReaction(dispatcher.RemoveListeners, session, reaction.MessageReaction)
 }
 
+type SlashCommand interface {
+	CreateCommand() *discordgo.ApplicationCommand
+}
+
+type InteractionApplicationListener interface {
+	SlashCommand
+	InteractionListener
+}
+
 type InteractionListener interface {
 	InteractionType() discordgo.InteractionType
-	CustomID() string
-	MatchCustomID(customID string) bool
+	InteractionID() string
+	MatchInteractionID(InteractionID string) bool
 	Handle(session *discordgo.Session, interaction *discordgo.Interaction) error
 }
 
@@ -75,7 +84,7 @@ func (dispatcher *InteractionDispatcher) OnInteractionCreate(session *discordgo.
 			continue
 		}
 
-		if want := listener.CustomID(); want != "" {
+		if want := listener.InteractionID(); want != "" {
 			got := ""
 			switch interaction.Type {
 			case discordgo.InteractionMessageComponent:
@@ -83,12 +92,12 @@ func (dispatcher *InteractionDispatcher) OnInteractionCreate(session *discordgo.
 			case discordgo.InteractionModalSubmit:
 				got = interaction.ModalSubmitData().CustomID
 			case discordgo.InteractionApplicationCommand:
-				// Note: 未対応
+				got = interaction.ApplicationCommandData().Name
 			case discordgo.InteractionApplicationCommandAutocomplete:
 				// Note: 未対応
 			}
 
-			if !listener.MatchCustomID(got) {
+			if !listener.MatchInteractionID(got) {
 				continue
 			}
 		}

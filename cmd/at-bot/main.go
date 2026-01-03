@@ -34,6 +34,7 @@ func main() {
 	recruitUsecase := recruit.NewRecruitUsecase(recruitRepo, participantRepos, txManager)
 	// handler
 	openCmd := handler.NewOpenRecruitCommand(recruitUsecase)
+	openSlashCmd := handler.NewOpenRecruitSlashCommand(recruitUsecase)
 	joinCmd := handler.NewJoinRecruitCommand(recruitUsecase)
 	declineCmd := handler.NewDeclineRecruitCommand(recruitUsecase)
 	cancelCmd := handler.NewCancelRecruitCommand(recruitUsecase)
@@ -51,6 +52,7 @@ func main() {
 			declineCmd,
 			cancelCmd,
 			closeCmd,
+			openSlashCmd,
 		},
 	}
 
@@ -61,6 +63,7 @@ func main() {
 			discord.WithIntent(discordgo.IntentMessageContent),
 			discord.WithMessageCreateHandler(prefixCommandDispatcher.OnMessageCreate),
 			discord.WithInteractionCreateHandler(interactionDispatcher.OnInteractionCreate),
+			discord.WithSlashCommand(openSlashCmd),
 		)
 
 	if err != nil {
@@ -69,7 +72,6 @@ func main() {
 
 	var sm discord.SessionManager
 	if err := sm.Open(config); err != nil {
-		// TODO: os.Exit(1) で終了。deferは実行されない。
 		log.Fatalf("DiscordBOTとの接続に失敗しました。: %v", err)
 	}
 	defer sm.Close()

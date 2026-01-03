@@ -37,8 +37,97 @@ const (
 	customIDKey  = "customID"
 )
 
+// 開始コマンド用の固定値
+const (
+	openCommandName = "at"
+	recruitArgName  = "人数"
+)
+
 func (id interactionCustomID) toString() string {
 	return string(id)
+}
+
+type openRecruitSlashCommand struct {
+	service *recruit.RecruitUsecase
+}
+
+func NewOpenRecruitSlashCommand(service *recruit.RecruitUsecase) *openRecruitSlashCommand {
+	return &openRecruitSlashCommand{
+		service: service,
+	}
+}
+
+func (command *openRecruitSlashCommand) CreateCommand() *discordgo.ApplicationCommand {
+	minValue := 1.0
+	return &discordgo.ApplicationCommand{
+		Name:        openCommandName,
+		Description: "募集を作成します。",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionInteger,
+				Name:        recruitArgName,
+				Description: "募集する人数を入力します。",
+				Required:    true,
+				MinValue:    &minValue,
+			},
+		},
+	}
+}
+
+func (command *openRecruitSlashCommand) InteractionType() discordgo.InteractionType {
+	return discordgo.InteractionApplicationCommand
+}
+
+func (command *openRecruitSlashCommand) InteractionID() string {
+	return openCommandName
+}
+
+func (command *openRecruitSlashCommand) MatchInteractionID(interactionID string) bool {
+	return command.InteractionID() == interactionID
+}
+
+func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
+	// 反応を待つようにACKを送信
+	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// 定員引数の取得
+	optionMap := getOptionMap(interaction)
+	opt, ok := optionMap[recruitArgName]
+	if !ok || opt == nil {
+		return fmt.Errorf("required option %q not found", recruitArgName)
+	}
+	num := int(opt.IntValue())
+
+	ctx, cancel := createContextWithTimeout()
+	defer cancel()
+
+	// 初期状態の募集メッセージを作成、送信
+	err = openRecruitment(ctx, session, command.service, interaction.ChannelID, interaction.GuildID, interaction.Member.User.ID, num)
+	if err != nil {
+		return err
+	}
+
+	// インタラクション反応待ちメッセージを削除
+	_ = session.InteractionResponseDelete(interaction)
+	return nil
+}
+
+func getOptionMap(interaction *discordgo.Interaction) map[string]*discordgo.ApplicationCommandInteractionDataOption {
+	options := interaction.ApplicationCommandData().Options
+	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options))
+	for _, opt := range options {
+		optionMap[opt.Name] = opt
+	}
+	return optionMap
 }
 
 type openRecruitCommand struct {
@@ -63,37 +152,24 @@ func (command *openRecruitCommand) Handle(session *discordgo.Session, message *d
 		return nil
 	}
 
-	// 初期状態の募集メッセージを作成、送信
-	initialState := InitState(message.Author.ID, num)
-	sentMessage, err := session.ChannelMessageSendComplex(message.ChannelID, initialState.toMessageContent())
-	if err != nil {
-		return fmt.Errorf("failed to send message. channelId: %s, %w", message.ChannelID, err)
-	}
+	// 作成者のコマンドメッセージに非推奨メッセージを送信
+	_, _ = session.ChannelMessageSendComplex(
+		string(message.ChannelID),
+		&discordgo.MessageSend{
+			Content: "⚠️ メッセージコマンド( `@` )は非推奨となったため近日中に廃止予定です。\n同様の募集機能はスラッシュコマンド( `/at` )から呼び出すことができます。",
+			Reference: &discordgo.MessageReference{
+				MessageID: string(message.ID),
+			},
+		},
+	)
 
 	ctx, cancel := createContextWithTimeout()
 	defer cancel()
 
-	// 募集の作成
-	_, err = command.service.Open(
-		ctx,
-		recruit.GuildID(message.GuildID),
-		recruit.ChannelID(message.ChannelID),
-		recruit.MessageID(sentMessage.ID),
-		num,
-		recruit.UserID(message.Author.ID),
-	)
-
+	// 初期状態の募集メッセージを作成、送信
+	err = openRecruitment(ctx, session, command.service, message.ChannelID, message.GuildID, message.Author.ID, num)
 	if err != nil {
-		// エラーが発生した場合は送信したメッセージを削除
-		_ = session.ChannelMessageDelete(message.ChannelID, sentMessage.ID)
 		return err
-	}
-
-	// 作成者のコマンドメッセージを削除
-	err = session.ChannelMessageDelete(message.ChannelID, message.ID)
-	if err != nil {
-		// Note: 元メッセージは消せなくてもよいのでログだけ残す
-		log.Printf("failed to delete message. channelId: %s, messageId: %s", message.ChannelID, message.ID)
 	}
 
 	return nil
@@ -110,6 +186,41 @@ type recruitState struct {
 	author       recruit.UserID
 	joinUsers    []recruit.UserID
 	declineUsers []recruit.UserID
+}
+
+func openRecruitment(
+	ctx context.Context,
+	session *discordgo.Session,
+	service *recruit.RecruitUsecase,
+	channelID string,
+	guildID string,
+	authorID string,
+	maxCapacity int,
+) error {
+	// 初期状態の募集メッセージを作成、送信
+	initialState := InitState(authorID, maxCapacity)
+	sentMessage, err := session.ChannelMessageSendComplex(channelID, initialState.toMessageContent())
+	if err != nil {
+		return fmt.Errorf("failed to send message. channelId: %s, %w", channelID, err)
+	}
+
+	// 募集の作成
+	_, err = service.Open(
+		ctx,
+		recruit.GuildID(guildID),
+		recruit.ChannelID(channelID),
+		recruit.MessageID(sentMessage.ID),
+		maxCapacity,
+		recruit.UserID(authorID),
+	)
+
+	if err != nil {
+		// エラーが発生した場合は送信したメッセージを削除
+		_ = session.ChannelMessageDelete(channelID, sentMessage.ID)
+		return err
+	}
+
+	return nil
 }
 
 func InitState(authorID string, maxCapacity int) *recruitState {
@@ -201,16 +312,16 @@ func (state *recruitState) toMessageContent() *discordgo.MessageSend {
 	}
 }
 
-type baseInteractionCommand struct {
+type customIDInteractionCommand struct {
 	customID string
 }
 
-func (command *baseInteractionCommand) CustomID() string {
+func (command *customIDInteractionCommand) InteractionID() string {
 	return command.customID
 }
 
-func (command *baseInteractionCommand) MatchCustomID(customID string) bool {
-	items, err := decodeCustomID(customID)
+func (command *customIDInteractionCommand) MatchInteractionID(interactionID string) bool {
+	items, err := decodeCustomID(interactionID)
 	if err != nil {
 		return false
 	}
@@ -284,7 +395,7 @@ func decodeCustomID(encodedStr string) (map[string]string, error) {
 	return data, nil
 }
 
-func (command *baseInteractionCommand) editInteractionResponse(
+func (command *customIDInteractionCommand) editInteractionResponse(
 	session *discordgo.Session,
 	interaction *discordgo.Interaction,
 	message string,
@@ -292,7 +403,7 @@ func (command *baseInteractionCommand) editInteractionResponse(
 	command.editInteractionResponseWithComponent(session, interaction, message, nil)
 }
 
-func (command *baseInteractionCommand) editInteractionResponseWithComponent(
+func (command *customIDInteractionCommand) editInteractionResponseWithComponent(
 	session *discordgo.Session,
 	interaction *discordgo.Interaction,
 	message string,
@@ -308,7 +419,7 @@ func (command *baseInteractionCommand) editInteractionResponseWithComponent(
 }
 
 type participantActionCommand struct {
-	baseInteractionCommand
+	customIDInteractionCommand
 	service    *recruit.RecruitUsecase
 	actionType recruit.ParticipantStatus
 }
@@ -317,7 +428,7 @@ func NewJoinRecruitCommand(service *recruit.RecruitUsecase) *participantActionCo
 	return &participantActionCommand{
 		service:    service,
 		actionType: recruit.ParticipantStatusJoined,
-		baseInteractionCommand: baseInteractionCommand{
+		customIDInteractionCommand: customIDInteractionCommand{
 			customID: interactionJoin.toString(),
 		},
 	}
@@ -327,7 +438,7 @@ func NewDeclineRecruitCommand(service *recruit.RecruitUsecase) *participantActio
 	return &participantActionCommand{
 		service:    service,
 		actionType: recruit.ParticipantStatusDeclined,
-		baseInteractionCommand: baseInteractionCommand{
+		customIDInteractionCommand: customIDInteractionCommand{
 			customID: interactionDecline.toString(),
 		},
 	}
@@ -337,7 +448,7 @@ func NewCancelRecruitCommand(service *recruit.RecruitUsecase) *participantAction
 	return &participantActionCommand{
 		service:    service,
 		actionType: recruit.ParticipantStatusCanceled,
-		baseInteractionCommand: baseInteractionCommand{
+		customIDInteractionCommand: customIDInteractionCommand{
 			customID: interactionCancel.toString(),
 		},
 	}
@@ -348,8 +459,9 @@ func (command *participantActionCommand) InteractionType() discordgo.Interaction
 }
 
 func (command *participantActionCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
-	// 3秒以内に応答する必要があるのでBOT待機メッセージで返答
-	// キャンセルボタンの場合は元のエフェメラルメッセージを更新対象にする
+	// 3秒以内にACKする。
+	// 参加/不参加: Deferredメッセージを送信して待機ACK
+	// キャンセル: Deferredメッセージは送信せずに待機ACK
 	var responseType discordgo.InteractionResponseType
 	if command.actionType == recruit.ParticipantStatusCanceled {
 		responseType = discordgo.InteractionResponseDeferredMessageUpdate
@@ -363,11 +475,12 @@ func (command *participantActionCommand) Handle(session *discordgo.Session, inte
 			Flags: discordgo.MessageFlagsEphemeral,
 		},
 	})
+
 	if err != nil {
 		return err
 	}
 
-	// Note: interaction.UserはDMでのインタラクションユーザーが入る
+	// interaction.UserはDMでのインタラクションユーザーが入る
 	// サーバーでのインタラクションユーザーはinteraction.Member.User
 	actorID := recruit.UserID(interaction.Member.User.ID)
 	channelID := recruit.ChannelID(interaction.ChannelID)
@@ -390,7 +503,9 @@ func (command *participantActionCommand) Handle(session *discordgo.Session, inte
 		return err
 	}
 
-	// BOT待機メッセージを削除
+	// BOTのephemeralメッセージを削除
+	// 参加/不参加: 送信したDeferredメッセージを削除
+	// キャンセル: この処理を呼び出したキャンセルボタン付きephemeralメッセージを削除
 	_ = session.InteractionResponseDelete(interaction)
 	// 追加メッセージの送信またはエフェメラルメッセージの完了処理
 	return command.sendFollowUpMessage(session, result, actorID)
@@ -506,7 +621,7 @@ func (command *participantActionCommand) sendFollowUpMessage(
 	view := result.CurrentView
 	switch command.actionType {
 	case recruit.ParticipantStatusJoined:
-		// 参加メッセージの送信
+		// 参加メッセージを全体に送信
 		return command.replyRecruitMessage(session, view, createJoinMessage(actorID, view))
 	case recruit.ParticipantStatusDeclined, recruit.ParticipantStatusCanceled:
 		// 参加済みから辞退/キャンセルに変更された場合のみ通知
@@ -576,14 +691,14 @@ func ptr(s string) *string {
 }
 
 type closeRecruitCommand struct {
-	baseInteractionCommand
+	customIDInteractionCommand
 	service *recruit.RecruitUsecase
 }
 
 func NewCloseRecruitCommand(service *recruit.RecruitUsecase) *closeRecruitCommand {
 	return &closeRecruitCommand{
 		service: service,
-		baseInteractionCommand: baseInteractionCommand{
+		customIDInteractionCommand: customIDInteractionCommand{
 			customID: interactionClose.toString(),
 		},
 	}
