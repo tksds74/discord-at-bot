@@ -20,7 +20,7 @@ func main() {
 
 	db, err := sqlite.InitDB("./data/bot.db")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("[INIT] failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
@@ -69,15 +69,16 @@ func main() {
 		)
 
 	if err != nil {
-		log.Fatalf("構成ファイルの構築に失敗しました。: %v", err)
+		log.Fatalf("[INIT] failed to create session config: %v", err)
 	}
 
 	var sm discord.SessionManager
 	if err := sm.Open(config); err != nil {
-		log.Fatalf("DiscordBOTとの接続に失敗しました。: %v", err)
+		log.Fatalf("[INIT] failed to connect to Discord: %v", err)
 	}
 	defer sm.Close()
 
+	log.Println("[INIT] discord bot started successfully")
 	fmt.Println("Press Ctrl+C to exit")
 	shutdown.WaitForExitSignal()
 }

@@ -23,7 +23,7 @@ func (dispatcher *PrefixCommandDispatcher) OnMessageCreate(session *discordgo.Se
 		}
 
 		if err := listener.Handle(session, message); err != nil {
-			log.Printf("dispatch error: %v", err)
+			log.Printf("[DISCORD] failed to handle prefix command: %v", err)
 		}
 	}
 }
@@ -45,7 +45,7 @@ func dispatchReaction(listeners []ReactionListener, session *discordgo.Session, 
 		}
 
 		if err := listener.Handle(session, reaction); err != nil {
-			log.Printf("dispatch error: %v", err)
+			log.Printf("[DISCORD] failed to handle reaction: %v", err)
 		}
 	}
 }
@@ -103,7 +103,7 @@ func (dispatcher *InteractionDispatcher) OnInteractionCreate(session *discordgo.
 		}
 
 		if err := listener.Handle(session, interaction.Interaction); err != nil {
-			log.Printf("dispatch error: %v", err)
+			log.Printf("[DISCORD] failed to handle interaction: %v", err)
 		}
 	}
 }

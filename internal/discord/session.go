@@ -3,6 +3,7 @@ package discord
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -147,9 +148,14 @@ func (manager *SessionManager) Open(config SessionConfig) error {
 		return err
 	}
 
-	_, err = session.ApplicationCommandBulkOverwrite(session.State.User.ID, "", config.Slashes())
+	commands, err := session.ApplicationCommandBulkOverwrite(session.State.User.ID, "", config.Slashes())
 	if err != nil {
 		return err
+	}
+
+	log.Printf("[DISCORD] registered %d slash commands", len(commands))
+	for _, cmd := range commands {
+		log.Printf("[DISCORD]   - /%s", cmd.Name)
 	}
 
 	manager.session = session
