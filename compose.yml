@@ -1,0 +1,15 @@
+services:
+  discord-bot:
+    build: .
+    container_name: discord-at-bot
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Asia/Tokyo
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

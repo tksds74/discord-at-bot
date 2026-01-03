@@ -88,6 +88,8 @@ func (command *openRecruitSlashCommand) MatchInteractionID(interactionID string)
 }
 
 func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
+	log.Printf("[RECRUIT] user %s opened recruitment via slash command", interaction.Member.User.ID)
+
 	// 反応を待つようにACKを送信
 	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -143,6 +145,8 @@ func (command *openRecruitCommand) Handle(session *discordgo.Session, message *d
 		// @はメンションなどにも使用されるので数値が来なくてもエラーにはしない
 		return nil
 	}
+
+	log.Printf("[RECRUIT] user %s opened recruitment via message command (deprecated)", message.Author.ID)
 
 	// 作成者のコマンドメッセージに非推奨メッセージを送信
 	_, _ = session.ChannelMessageSendComplex(
@@ -406,7 +410,7 @@ func (command *customIDInteractionCommand) editInteractionResponseWithComponent(
 		Components: component,
 	})
 	if err != nil {
-		log.Printf("failed to edit interaction response: %v", err)
+		log.Printf("[RECRUIT] failed to edit interaction response: %v", err)
 	}
 }
 
@@ -451,6 +455,8 @@ func (command *participantActionCommand) InteractionType() discordgo.Interaction
 }
 
 func (command *participantActionCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
+	log.Printf("[RECRUIT] user %s action: %v", interaction.Member.User.ID, command.actionType)
+
 	// 3秒以内にACKする。
 	// 参加/不参加: Deferredメッセージを送信して待機ACK
 	// キャンセル: Deferredメッセージは送信せずに待機ACK
@@ -701,6 +707,8 @@ func (command *closeRecruitCommand) InteractionType() discordgo.InteractionType 
 }
 
 func (command *closeRecruitCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
+	log.Printf("[RECRUIT] user %s closed recruitment", interaction.Member.User.ID)
+
 	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})

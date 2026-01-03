@@ -2,6 +2,7 @@ package handler
 
 import (
 	"at-bot/internal/dice"
+	"log"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -63,6 +64,8 @@ func (command *diceSlashCommand) Handle(session *discordgo.Session, interaction 
 	if ok && opt != nil {
 		diceCount = int(opt.IntValue())
 	}
+
+	log.Printf("[DICE] user %s rolled %d dice", interaction.Member.User.ID, diceCount)
 
 	results, err := command.service.Dice(diceCount)
 	if err != nil {
