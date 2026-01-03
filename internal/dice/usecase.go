@@ -10,7 +10,7 @@ var dice = [6]string{"1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6�
 
 type DiceUsecase struct{}
 
-func NewRecruitUsecase() *DiceUsecase {
+func NewDiceUsecase() *DiceUsecase {
 	return &DiceUsecase{}
 }
 

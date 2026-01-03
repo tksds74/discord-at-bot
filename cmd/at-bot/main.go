@@ -33,7 +33,7 @@ func main() {
 	txManager := sqlite.NewTxManager(db)
 	// usecase
 	recruitUsecase := recruit.NewRecruitUsecase(recruitRepo, participantRepos, txManager)
-	diceUsecase := dice.NewRecruitUsecase()
+	diceUsecase := dice.NewDiceUsecase()
 	// handler
 	openCmd := handler.NewOpenRecruitCommand(recruitUsecase)
 	openSlashCmd := handler.NewOpenRecruitSlashCommand(recruitUsecase)

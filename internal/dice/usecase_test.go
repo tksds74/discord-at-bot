@@ -62,7 +62,7 @@ func TestRandom(t *testing.T) {
 }
 
 func TestDiceUsecase_Dice(t *testing.T) {
-	uc := NewRecruitUsecase()
+	uc := NewDiceUsecase()
 
 	tests := []struct {
 		name      string
