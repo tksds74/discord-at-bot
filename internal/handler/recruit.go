@@ -93,9 +93,6 @@ func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, inter
 	// 反応を待つようにACKを送信
 	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Flags: discordgo.MessageFlagsEphemeral,
-		},
 	})
 
 	if err != nil {
@@ -108,19 +105,38 @@ func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, inter
 	if !ok || opt == nil {
 		return fmt.Errorf("required option %q not found", recruitArgName)
 	}
-	num := int(opt.IntValue())
+	maxCapacity := int(opt.IntValue())
+
+	// 初期状態の募集メッセージを作成、送信
+	initialState := InitState(interaction.Member.User.ID, maxCapacity)
+	sentMessage, err := session.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+		Embeds:     &[]*discordgo.MessageEmbed{initialState.toEmbed()},
+		Components: &[]discordgo.MessageComponent{initialState.toComponent()},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to send message. channelId: %s, %w", interaction.ChannelID, err)
+	}
 
 	ctx, cancel := createContextWithTimeout()
 	defer cancel()
 
-	// 初期状態の募集メッセージを作成、送信
-	err = openRecruitment(ctx, session, command.service, interaction.ChannelID, interaction.GuildID, interaction.Member.User.ID, num)
+	// 募集の作成
+	_, err = command.service.Open(
+		ctx,
+		recruit.GuildID(interaction.GuildID),
+		recruit.ChannelID(interaction.ChannelID),
+		recruit.MessageID(sentMessage.ID),
+		maxCapacity,
+		recruit.UserID(interaction.Member.User.ID),
+	)
+
 	if err != nil {
+		// エラーが発生した場合は送信したメッセージを削除
+		_ = session.InteractionResponseDelete(interaction)
 		return err
 	}
 
-	// インタラクション反応待ちメッセージを削除
-	_ = session.InteractionResponseDelete(interaction)
 	return nil
 }
 
@@ -140,7 +156,7 @@ func (command *openRecruitCommand) Prefix() string {
 
 func (command *openRecruitCommand) Handle(session *discordgo.Session, message *discordgo.MessageCreate) error {
 	// 定員引数の取得
-	num, err := command.extractArgNumber(message.Content)
+	maxCapacity, err := command.extractArgNumber(message.Content)
 	if err != nil {
 		// @はメンションなどにも使用されるので数値が来なくてもエラーにはしない
 		return nil
@@ -148,23 +164,41 @@ func (command *openRecruitCommand) Handle(session *discordgo.Session, message *d
 
 	log.Printf("[RECRUIT] user %s opened recruitment via message command (deprecated)", message.Author.ID)
 
+	// 初期状態の募集メッセージを作成、送信
+	initialState := InitState(message.Author.ID, maxCapacity)
 	// 作成者のコマンドメッセージに非推奨メッセージを送信
-	_, _ = session.ChannelMessageSendComplex(
-		string(message.ChannelID),
+	sentMessage, err := session.ChannelMessageSendComplex(
+		message.ChannelID,
 		&discordgo.MessageSend{
-			Content: "⚠️ メッセージコマンド( `@` )は非推奨となったため近日中に廃止予定です。\n同様の募集機能はスラッシュコマンド( `/at` )から呼び出すことができます。",
+			Content:    "⚠️ メッセージコマンド( `@` )は非推奨となったため近日中に廃止予定です。\n同様の募集機能はスラッシュコマンド( `/at` )から呼び出してください。",
+			Embeds:     []*discordgo.MessageEmbed{initialState.toEmbed()},
+			Components: []discordgo.MessageComponent{initialState.toComponent()},
 			Reference: &discordgo.MessageReference{
-				MessageID: string(message.ID),
+				MessageID: message.ID,
 			},
 		},
 	)
 
+	if err != nil {
+		return fmt.Errorf("failed to send message. channelId: %s, %w", message.ChannelID, err)
+	}
+
 	ctx, cancel := createContextWithTimeout()
 	defer cancel()
 
-	// 初期状態の募集メッセージを作成、送信
-	err = openRecruitment(ctx, session, command.service, message.ChannelID, message.GuildID, message.Author.ID, num)
+	// 募集の作成
+	_, err = command.service.Open(
+		ctx,
+		recruit.GuildID(message.GuildID),
+		recruit.ChannelID(message.ChannelID),
+		recruit.MessageID(sentMessage.ID),
+		maxCapacity,
+		recruit.UserID(message.Author.ID),
+	)
+
 	if err != nil {
+		// エラーが発生した場合は送信したメッセージを削除
+		_ = session.ChannelMessageDelete(message.ChannelID, sentMessage.ID)
 		return err
 	}
 
@@ -182,41 +216,6 @@ type recruitState struct {
 	author       recruit.UserID
 	joinUsers    []recruit.UserID
 	declineUsers []recruit.UserID
-}
-
-func openRecruitment(
-	ctx context.Context,
-	session *discordgo.Session,
-	service *recruit.RecruitUsecase,
-	channelID string,
-	guildID string,
-	authorID string,
-	maxCapacity int,
-) error {
-	// 初期状態の募集メッセージを作成、送信
-	initialState := InitState(authorID, maxCapacity)
-	sentMessage, err := session.ChannelMessageSendComplex(channelID, initialState.toMessageContent())
-	if err != nil {
-		return fmt.Errorf("failed to send message. channelId: %s, %w", channelID, err)
-	}
-
-	// 募集の作成
-	_, err = service.Open(
-		ctx,
-		recruit.GuildID(guildID),
-		recruit.ChannelID(channelID),
-		recruit.MessageID(sentMessage.ID),
-		maxCapacity,
-		recruit.UserID(authorID),
-	)
-
-	if err != nil {
-		// エラーが発生した場合は送信したメッセージを削除
-		_ = session.ChannelMessageDelete(channelID, sentMessage.ID)
-		return err
-	}
-
-	return nil
 }
 
 func InitState(authorID string, maxCapacity int) *recruitState {
@@ -298,13 +297,6 @@ func (state *recruitState) toComponent() discordgo.ActionsRow {
 				CustomID: declineCustomID,
 			},
 		},
-	}
-}
-
-func (state *recruitState) toMessageContent() *discordgo.MessageSend {
-	return &discordgo.MessageSend{
-		Embeds:     []*discordgo.MessageEmbed{state.toEmbed()},
-		Components: []discordgo.MessageComponent{state.toComponent()},
 	}
 }
 
