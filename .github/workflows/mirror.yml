@@ -1,0 +1,19 @@
+name: Mirror to private
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+jobs:
+  mirror:
+    if: github.repository == 'tksds74/discord-at-bot'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push tag to private repo
+        run: |
+          git remote add private \
+            https://x-access-token:${{ secrets.PRIVATE_REPO_PAT }}@github.com/tksds74/discord-at-bot-deploy.git
+          git push private "${GITHUB_REF_NAME}"
