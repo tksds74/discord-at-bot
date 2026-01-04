@@ -22,9 +22,8 @@
    - `bot`
    - `applications.commands`
 5. Bot Permissionsで必要な権限を付与
-   - Send Messages
-   - Use Slash Commands
-   - Mention Everyone
+   - `Send Messages`
+   - `Embed Links`
 
 ### 環境変数の設定
 
