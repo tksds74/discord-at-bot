@@ -1,5 +1,5 @@
 # ビルドステージ
-FROM golang:1.23-bullseye AS builder
+FROM golang:1.25-bookworm AS builder
 
 WORKDIR /build
 
@@ -12,7 +12,7 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -o bot ./cmd/at-bot
 
 # 実行ステージ (最小構成)
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # 必要な最小限のパッケージをインストール
 RUN apt-get update && apt-get install -y --no-install-recommends \
