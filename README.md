@@ -9,8 +9,8 @@
 
 ### 前提条件
 
-- Go 1.21以上（ローカル実行の場合）
 - Docker & Docker Compose（Docker実行の場合）
+- Go 1.25（ローカル実行の場合）
 - Discord Bot Token
 
 ### Discord Botの作成
@@ -48,5 +48,5 @@ docker compose up -d
 #### ローカルで起動
 
 ```bash
-go run ./cmd/at-bot-main
+go run ./cmd/at-bot
 ```
