@@ -7,7 +7,6 @@ import (
 	"at-bot/internal/handler"
 	"at-bot/internal/recruit"
 	"at-bot/internal/shutdown"
-	"fmt"
 	"log"
 	"os"
 
@@ -71,6 +70,5 @@ func main() {
 	defer sm.Close()
 
 	log.Println("[INIT] discord bot started successfully")
-	fmt.Println("Press Ctrl+C to exit")
 	shutdown.WaitForExitSignal()
 }
