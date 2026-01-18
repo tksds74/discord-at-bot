@@ -14,13 +14,11 @@ ARG VERSION
 ARG COMMIT_ID
 
 RUN CGO_ENABLED=1 GOOS=linux \
-    BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
-    GO_BUILD=$(go env GOVERSION) \
     go build -ldflags "\
     -X at-bot/internal/meta.version=${VERSION} \
     -X at-bot/internal/meta.commitID=${COMMIT_ID} \
-    -X at-bot/internal/meta.buildTime=${BUILD_TIME} \
-    -X at-bot/internal/meta.goBuild=${GO_BUILD} \
+    -X at-bot/internal/meta.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+    -X at-bot/internal/meta.goBuild=$(go env GOVERSION) \
     " \
     -o bot ./cmd/at-bot
 
