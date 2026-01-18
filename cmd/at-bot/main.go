@@ -37,6 +37,7 @@ func main() {
 	cancelCmd := handler.NewCancelRecruitCommand(recruitUsecase)
 	closeCmd := handler.NewCloseRecruitCommand(recruitUsecase)
 	diceCmd := handler.NewDiceSlashCommand(diceUsecase)
+	versionCmd := handler.NewVersionSlashCommand()
 
 	interactionDispatcher := &discord.InteractionDispatcher{
 		Listeners: []discord.InteractionListener{
@@ -46,6 +47,7 @@ func main() {
 			closeCmd,
 			openSlashCmd,
 			diceCmd,
+			versionCmd,
 		},
 	}
 
@@ -57,6 +59,7 @@ func main() {
 			discord.WithInteractionCreateHandler(interactionDispatcher.OnInteractionCreate),
 			discord.WithSlashCommand(openSlashCmd),
 			discord.WithSlashCommand(diceCmd),
+			discord.WithSlashCommand(versionCmd),
 		)
 
 	if err != nil {
