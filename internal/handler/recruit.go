@@ -43,6 +43,8 @@ const (
 	recruitArgName         = "人数"
 )
 
+const errorMessageContent = "❗処理中に問題が発生しました。"
+
 func (id interactionCustomID) toString() string {
 	return string(id)
 }
@@ -388,7 +390,7 @@ func (command *customIDInteractionCommand) editInteractionResponse(
 	interaction *discordgo.Interaction,
 	message string,
 ) {
-	command.editInteractionResponseWithComponent(session, interaction, message, nil)
+	command.editInteractionResponseWithComponent(session, interaction, message, &[]discordgo.MessageComponent{})
 }
 
 func (command *customIDInteractionCommand) editInteractionResponseWithComponent(
@@ -542,7 +544,7 @@ func (command *participantActionCommand) handleActionError(session *discordgo.Se
 		command.sendParticipantControlPanel(session, interaction)
 		return nil
 	}
-	command.editInteractionResponse(session, interaction, "❗処理中に問題が発生しました。")
+	command.editInteractionResponse(session, interaction, errorMessageContent)
 	return err
 }
 
@@ -727,6 +729,8 @@ func (command *closeRecruitCommand) Handle(session *discordgo.Session, interacti
 	// 削除ロジック実行
 	err = command.service.Close(ctx, channelID, recruitMessageID, actorID)
 	if err != nil {
+		// TODO: 表示エラーメッセージの具体化
+		command.editInteractionResponse(session, interaction, errorMessageContent)
 		return err
 	}
 
