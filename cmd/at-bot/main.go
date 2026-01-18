@@ -7,7 +7,6 @@ import (
 	"at-bot/internal/handler"
 	"at-bot/internal/recruit"
 	"at-bot/internal/shutdown"
-	"fmt"
 	"log"
 	"os"
 
@@ -38,6 +37,7 @@ func main() {
 	cancelCmd := handler.NewCancelRecruitCommand(recruitUsecase)
 	closeCmd := handler.NewCloseRecruitCommand(recruitUsecase)
 	diceCmd := handler.NewDiceSlashCommand(diceUsecase)
+	versionCmd := handler.NewVersionSlashCommand()
 
 	interactionDispatcher := &discord.InteractionDispatcher{
 		Listeners: []discord.InteractionListener{
@@ -47,6 +47,7 @@ func main() {
 			closeCmd,
 			openSlashCmd,
 			diceCmd,
+			versionCmd,
 		},
 	}
 
@@ -58,6 +59,7 @@ func main() {
 			discord.WithInteractionCreateHandler(interactionDispatcher.OnInteractionCreate),
 			discord.WithSlashCommand(openSlashCmd),
 			discord.WithSlashCommand(diceCmd),
+			discord.WithSlashCommand(versionCmd),
 		)
 
 	if err != nil {
@@ -71,6 +73,5 @@ func main() {
 	defer sm.Close()
 
 	log.Println("[INIT] discord bot started successfully")
-	fmt.Println("Press Ctrl+C to exit")
 	shutdown.WaitForExitSignal()
 }
