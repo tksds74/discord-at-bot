@@ -142,77 +142,6 @@ func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, inter
 	return nil
 }
 
-type openRecruitCommand struct {
-	service *recruit.RecruitUsecase
-}
-
-func NewOpenRecruitCommand(service *recruit.RecruitUsecase) *openRecruitCommand {
-	return &openRecruitCommand{
-		service: service,
-	}
-}
-
-func (command *openRecruitCommand) Prefix() string {
-	return "@"
-}
-
-func (command *openRecruitCommand) Handle(session *discordgo.Session, message *discordgo.MessageCreate) error {
-	// 定員引数の取得
-	maxCapacity, err := command.extractArgNumber(message.Content)
-	if err != nil {
-		// @はメンションなどにも使用されるので数値が来なくてもエラーにはしない
-		return nil
-	}
-
-	log.Printf("[RECRUIT] user %s opened recruitment via message command (deprecated)", message.Author.ID)
-
-	// 初期状態の募集メッセージを作成、送信
-	initialState := InitState(message.Author.ID, maxCapacity)
-	// 作成者のコマンドメッセージに非推奨メッセージを送信
-	sentMessage, err := session.ChannelMessageSendComplex(
-		message.ChannelID,
-		&discordgo.MessageSend{
-			Content:    "⚠️ メッセージコマンド( `@` )は非推奨となったため近日中に廃止予定です。\n同様の募集機能はスラッシュコマンド( `/at` )から呼び出してください。",
-			Embeds:     []*discordgo.MessageEmbed{initialState.toEmbed()},
-			Components: []discordgo.MessageComponent{initialState.toComponent()},
-			Reference: &discordgo.MessageReference{
-				MessageID: message.ID,
-			},
-		},
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to send message. channelId: %s, %w", message.ChannelID, err)
-	}
-
-	ctx, cancel := createContextWithTimeout()
-	defer cancel()
-
-	// 募集の作成
-	_, err = command.service.Open(
-		ctx,
-		recruit.GuildID(message.GuildID),
-		recruit.ChannelID(message.ChannelID),
-		recruit.MessageID(sentMessage.ID),
-		maxCapacity,
-		recruit.UserID(message.Author.ID),
-	)
-
-	if err != nil {
-		// エラーが発生した場合は送信したメッセージを削除
-		_ = session.ChannelMessageDelete(message.ChannelID, sentMessage.ID)
-		return err
-	}
-
-	return nil
-}
-
-func (command *openRecruitCommand) extractArgNumber(content string) (int, error) {
-	arg := strings.TrimSpace(strings.TrimPrefix(content, command.Prefix()))
-	args := strings.Split(strings.ReplaceAll(arg, "　", " "), " ")
-	return strconv.Atoi(args[0])
-}
-
 type recruitState struct {
 	maxCapacity  int
 	author       recruit.UserID
@@ -252,6 +181,7 @@ func (state *recruitState) toUsersString(userIds []recruit.UserID) string {
 		if i > 0 {
 			b.WriteByte('\n')
 		}
+		b.WriteString("- ")
 		b.WriteString(discord.FormatMention(string(id)))
 	}
 	return b.String()
