@@ -32,19 +32,12 @@ func main() {
 	recruitUsecase := recruit.NewRecruitUsecase(recruitRepo, participantRepos, txManager)
 	diceUsecase := dice.NewDiceUsecase()
 	// handler
-	openCmd := handler.NewOpenRecruitCommand(recruitUsecase)
 	openSlashCmd := handler.NewOpenRecruitSlashCommand(recruitUsecase)
 	joinCmd := handler.NewJoinRecruitCommand(recruitUsecase)
 	declineCmd := handler.NewDeclineRecruitCommand(recruitUsecase)
 	cancelCmd := handler.NewCancelRecruitCommand(recruitUsecase)
 	closeCmd := handler.NewCloseRecruitCommand(recruitUsecase)
 	diceCmd := handler.NewDiceSlashCommand(diceUsecase)
-
-	prefixCommandDispatcher := &discord.PrefixCommandDispatcher{
-		Listeners: []discord.PrefixCommandListener{
-			openCmd,
-		},
-	}
 
 	interactionDispatcher := &discord.InteractionDispatcher{
 		Listeners: []discord.InteractionListener{
@@ -62,7 +55,6 @@ func main() {
 			discord.WithToken(os.Getenv("DISCORD_BOT_TOKEN")),
 			discord.WithIntent(discordgo.IntentGuildMessages),
 			discord.WithIntent(discordgo.IntentMessageContent),
-			discord.WithMessageCreateHandler(prefixCommandDispatcher.OnMessageCreate),
 			discord.WithInteractionCreateHandler(interactionDispatcher.OnInteractionCreate),
 			discord.WithSlashCommand(openSlashCmd),
 			discord.WithSlashCommand(diceCmd),

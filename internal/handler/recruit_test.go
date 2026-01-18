@@ -251,12 +251,12 @@ func TestRecruitState_ToUsersString(t *testing.T) {
 		{
 			name:    "ユーザーが1人の場合",
 			userIds: []recruit.UserID{"user1"},
-			want:    "<@user1>",
+			want:    "- <@user1>",
 		},
 		{
 			name:    "ユーザーが複数の場合",
 			userIds: []recruit.UserID{"user1", "user2", "user3"},
-			want:    "<@user1>\n<@user2>\n<@user3>",
+			want:    "- <@user1>\n- <@user2>\n- <@user3>",
 		},
 		{
 			name:    "ユーザーがいない場合",
@@ -361,61 +361,6 @@ func TestOpenRecruitSlashCommand_CreateCommand(t *testing.T) {
 
 	if opt.MinValue == nil || *opt.MinValue != 1.0 {
 		t.Errorf("CreateCommand().Options[0].MinValue = %v, want 1.0", opt.MinValue)
-	}
-}
-
-func TestOpenRecruitCommand_ExtractArgNumber(t *testing.T) {
-	cmd := &openRecruitCommand{}
-
-	tests := []struct {
-		name    string
-		content string
-		want    int
-		wantErr bool
-	}{
-		{
-			name:    "半角スペース区切りで数値を抽出",
-			content: "@5",
-			want:    5,
-			wantErr: false,
-		},
-		{
-			name:    "全角スペース区切りで数値を抽出",
-			content: "@　10",
-			want:    10,
-			wantErr: false,
-		},
-		{
-			name:    "半角スペースで区切られた数値",
-			content: "@ 3",
-			want:    3,
-			wantErr: false,
-		},
-		{
-			name:    "数値でない場合はエラー",
-			content: "@abc",
-			want:    0,
-			wantErr: true,
-		},
-		{
-			name:    "空の場合はエラー",
-			content: "@",
-			want:    0,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := cmd.extractArgNumber(tt.content)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("extractArgNumber() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && got != tt.want {
-				t.Errorf("extractArgNumber() = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 
