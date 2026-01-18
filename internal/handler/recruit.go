@@ -90,7 +90,7 @@ func (command *openRecruitSlashCommand) MatchInteractionID(interactionID string)
 }
 
 func (command *openRecruitSlashCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
-	log.Printf("[RECRUIT] user %s opened recruitment via slash command", interaction.Member.User.ID)
+	log.Printf("[RECRUIT] user %s opened recruitment", interaction.Member.User.ID)
 
 	// 反応を待つようにACKを送信
 	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{

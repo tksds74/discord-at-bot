@@ -1,4 +1,4 @@
-package meta
+package buildinfo
 
 import "strings"
 
@@ -16,6 +16,10 @@ var (
 )
 
 func Version() string {
+	return version
+}
+
+func VersionWithPrefix() string {
 	if version == devVersion {
 		return version
 	}

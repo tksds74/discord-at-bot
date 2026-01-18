@@ -1,7 +1,9 @@
 package handler
 
 import (
-	"at-bot/internal/meta"
+	"at-bot/internal/buildinfo"
+	"fmt"
+	"log"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -36,6 +38,13 @@ func (command *versionSlashCommand) MatchInteractionID(interactionID string) boo
 }
 
 func (command *versionSlashCommand) Handle(session *discordgo.Session, interaction *discordgo.Interaction) error {
+	log.Printf(
+		"[VERSION] user %s checked version %s (%s)",
+		interaction.Member.User.ID,
+		buildinfo.Version(),
+		buildinfo.ShortCommitID(),
+	)
+
 	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -53,12 +62,11 @@ func (command *versionSlashCommand) Handle(session *discordgo.Session, interacti
 
 func toEmbed() *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
-		Title: "🤖 @募っと",
+		Title: fmt.Sprintf("🤖 %s", buildinfo.VersionWithPrefix()),
 		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Version", Value: meta.Version()},
-			{Name: "Commit", Value: meta.CommitID()},
-			{Name: "Built", Value: meta.BuildTime()},
-			{Name: "Go(build)", Value: meta.GoBuild()},
+			{Name: "Commit", Value: buildinfo.CommitID()},
+			{Name: "Built", Value: buildinfo.BuildTime()},
+			{Name: "Go(build)", Value: buildinfo.GoBuild()},
 		},
 	}
 }
